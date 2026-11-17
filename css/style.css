@@ -146,6 +146,22 @@ body[data-turn='1'] .glow.g1, body[data-turn='2'] .glow.g2 { opacity: 1; }
 .app[data-screen='lobby'] .stage { grid-template-areas: 'lobby table'; }
 .app[data-screen='invite'] .stage { grid-template-areas: 'invite table'; }
 .app[data-screen='game'] .stage { grid-template-areas: 'hud table' 'controls table'; }
+.app[data-screen='game'][data-mode='train'] .stage {
+  grid-template-areas: 'hud table' 'controls table' 'coach table';
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
+  align-items: start;
+}
+.app[data-screen='learn'] .stage { grid-template-areas: 'learn table'; }
+.app[data-screen='task'] .stage { grid-template-areas: 'task table'; }
+
+.coach { grid-area: coach; }
+.learn { grid-area: learn; }
+.task { grid-area: task; }
+.app:not([data-screen='game']) .coach,
+.app:not([data-mode='train']) .coach,
+.app:not([data-screen='learn']) .learn,
+.app:not([data-screen='task']) .task { display: none; }
 
 .brand { grid-area: brand; }
 .modes { grid-area: modes; }
@@ -499,6 +515,163 @@ body[data-turn='1'] .glow.g1, body[data-turn='2'] .glow.g2 { opacity: 1; }
 @keyframes draw-line { to { stroke-dashoffset: 0; } }
 @keyframes ring-in { from { transform: scale(0.6); opacity: 0; } }
 
+/* ---------- training */
+
+.app[data-screen='game'][data-mode='train'] .hud { align-self: start; }
+.app[data-screen='game'][data-mode='train'] .table { align-self: start; }
+
+.learn-links { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.coach { display: grid; gap: 14px; align-self: start; min-width: 0; }
+
+.verdict { display: grid; gap: 2px; }
+.verdict-label { font-size: 13px; color: var(--ink-muted); }
+.verdict-text { font-family: var(--display); font-size: 28px; line-height: 1.15; color: var(--ink); min-height: 1.15em; }
+.verdict.win .verdict-text { color: var(--brass-light); }
+.verdict.loss .verdict-text { color: #f4a68c; }
+.verdict.pending .verdict-text { color: var(--ink-muted); }
+
+.feedback, .task-feedback {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: rgba(4, 17, 13, 0.36);
+  border: 1px solid var(--line);
+}
+.feedback.empty, .task-feedback.empty { display: none; }
+.grade {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 750;
+}
+.grade::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.grade.best { color: var(--brass-light); }
+.grade.good { color: var(--pearl); }
+.grade.mistake { color: #f3b46c; }
+.grade.blunder { color: #f5866f; }
+.grade.neutral { color: var(--ink-muted); }
+.fb-text { margin: 0; font-size: 16px; }
+.fb-detail { margin: 0; font-size: 14px; color: var(--ink-muted); }
+.fb-text:empty, .fb-detail:empty { display: none; }
+
+.coach-note { margin: 0; font-size: 15px; }
+.coach-note:empty { display: none; }
+.coach-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn.small { font-size: 14px; padding: 8px 12px; border-radius: 9px; }
+.btn[aria-pressed='true'] { background: var(--ink); color: var(--walnut-dark); border-color: var(--ink); }
+.btn[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+.btn[aria-disabled='true']:hover { border-color: rgba(243, 238, 228, 0.24); background: rgba(4, 17, 13, 0.32); }
+.btn[aria-disabled='true'][aria-pressed='true'] { background: var(--ink); }
+.legend { margin: -4px 0 0; font-size: 13px; color: var(--ink-muted); }
+.legend[hidden] { display: none; }
+
+.review { display: grid; gap: 8px; }
+.review-head { margin: 0; font-size: 16px; }
+.review .link { justify-self: start; }
+.review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: min(260px, 34vh); overflow: auto; }
+.review-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 4.8em 5.6em 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.review-item:hover, .review-item[aria-current='true'] { background: rgba(243, 238, 228, 0.07); }
+.review-item .grade { font-size: 13px; }
+.review-item .when { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+/* lessons and puzzles */
+
+.learn, .task { display: grid; gap: 14px; align-self: center; min-width: 0; }
+.panel-title {
+  margin: 6px 0 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.1;
+}
+.lesson-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.lesson-list li { border-bottom: 1px solid var(--line); }
+.lesson-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2ch 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 13px 4px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.lesson-item:hover .lesson-name { text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(246, 220, 152, 0.5); }
+.lesson-item .num { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.lesson-item .done { font-size: 13px; font-weight: 600; color: var(--brass-light); }
+
+.task-count { margin: 0; font-size: 14px; color: var(--ink-muted); }
+.task-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(34px, 3.6vw, 46px);
+  line-height: 1.05;
+}
+.task-intro { display: grid; gap: 10px; }
+.task-intro:empty { display: none; }
+.task-intro p { margin: 0; max-width: 46ch; }
+.task-prompt { margin: 0; font-size: 18px; font-weight: 650; }
+
+/* board notes */
+
+.note-tag circle { stroke-width: 3; }
+.note-tag text { font: 750 27px var(--ui); fill: var(--ink); }
+.note-tag.win circle { fill: rgba(217, 164, 65, 0.3); stroke: rgba(246, 220, 152, 0.9); }
+.note-tag.draw circle { fill: rgba(239, 233, 222, 0.14); stroke: rgba(239, 233, 222, 0.6); }
+.note-tag.loss circle { fill: rgba(224, 92, 70, 0.24); stroke: rgba(245, 150, 128, 0.8); }
+.note-tag.unknown circle { fill: none; stroke: rgba(239, 233, 222, 0.35); stroke-dasharray: 6 6; }
+.note-tag.best circle { stroke-width: 6; }
+
+.note-ghost { animation: note-ghost-in 0.32s cubic-bezier(0.2, 1.3, 0.4, 1) backwards; }
+.note-ghost.still { animation: none; }
+.note-ghost circle { stroke-width: 3; }
+.note-ghost.p1 circle { fill: rgba(222, 170, 72, 0.62); stroke: #f8de9c; }
+.note-ghost.p2 circle { fill: rgba(240, 235, 225, 0.58); stroke: #ffffff; }
+.note-ghost text { font: 800 32px var(--ui); fill: #1e1408; }
+.note-line { stroke-width: 10; stroke-linecap: round; opacity: 0.8; }
+.note-line.p1 { stroke: #f8de9c; }
+.note-line.p2 { stroke: #ffffff; }
+@keyframes note-ghost-in { from { opacity: 0; } }
+
+.note-mark { fill: none; stroke: #f8de9c; stroke-width: 4; stroke-dasharray: 9 7; }
+.note-best { fill: none; stroke: #f8de9c; stroke-width: 6; }
+
+.note-heat circle { fill: rgba(246, 220, 152, calc(var(--h) * 0.42)); stroke: rgba(246, 220, 152, 0.25); stroke-width: 2; }
+.note-heat text { font: 700 27px var(--ui); fill: var(--ink); }
+
 /* ---------- dialogs */
 
 .dlg {
@@ -531,6 +704,25 @@ body[data-turn='1'] .glow.g1, body[data-turn='2'] .glow.g2 { opacity: 1; }
   .app[data-screen='lobby'] .stage { grid-template-areas: 'lobby' 'table'; }
   .app[data-screen='invite'] .stage { grid-template-areas: 'invite' 'table'; }
   .app[data-screen='game'] .stage { grid-template-areas: 'hud' 'table' 'controls'; align-content: center; }
+  .app[data-screen='game'][data-mode='train'] .stage { grid-template-areas: 'hud' 'table' 'coach' 'controls'; align-content: start; }
+  .app[data-screen='game'][data-mode='train'] .table { grid-row: auto; }
+  .app[data-screen='game'][data-mode='train'] .rig { --reserve: 330px; }
+  .app[data-screen='learn'] .stage { grid-template-areas: 'learn' 'table'; }
+  /* lessons and puzzles on a phone: read above the board, see the result just below it */
+  .app[data-screen='task'] .stage {
+    grid-template-areas: 'tcount' 'ttitle' 'tintro' 'tprompt' 'table' 'tfeedback' 'tbuttons';
+    row-gap: 12px;
+  }
+  .app[data-screen='task'] .task { display: contents; }
+  .task-count { grid-area: tcount; }
+  .task-title { grid-area: ttitle; }
+  .task-intro { grid-area: tintro; }
+  .task-prompt { grid-area: tprompt; }
+  .task-feedback { grid-area: tfeedback; }
+  .task > .control-row { grid-area: tbuttons; justify-content: center; }
+  .app[data-screen='task'] .rig { --reserve: 300px; }
+  .verdict-text { font-size: 24px; }
+  .coach { gap: 12px; }
   .app[data-screen='invite'] .rig { --reserve: 420px; }
   .invite-name { text-align: left; }
   .brand { font-size: clamp(52px, 15vw, 76px); margin: 0; }
@@ -562,4 +754,5 @@ body[data-turn='1'] .glow.g1, body[data-turn='2'] .glow.g2 { opacity: 1; }
   .win-line { animation: none; stroke-dashoffset: 0; }
   .win-ring { animation: none; }
   .glow, .plate .chip, .mode::before { transition: none; }
+  .note-ghost { animation: none; }
 }

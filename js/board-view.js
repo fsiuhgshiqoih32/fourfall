@@ -128,6 +128,7 @@ export class BoardView {
           </linearGradient>
         </defs>
         <rect class="col-hint" x="${PAD + 4}" y="${AIR + 6}" width="${CELL - 8}" height="${ROWS * CELL + PAD * 2 - 12}" rx="20" fill="url(#ff-hint)"/>
+        <g class="notes"></g>
         <g class="win"></g>
       </svg>
       <canvas class="sparks" aria-hidden="true"></canvas>
@@ -136,6 +137,7 @@ export class BoardView {
     this.overlay = root.querySelector('.overlay');
     this.hint = root.querySelector('.col-hint');
     this.winGroup = root.querySelector('.win');
+    this.notes = root.querySelector('.notes');
     this.canvas = root.querySelector('.sparks');
     this.cols = root.querySelector('.cols');
 
@@ -285,6 +287,7 @@ export class BoardView {
   // ----- discs
 
   makeDisc(player, col, row) {
+    this.discs.get(idx(col, row))?.remove(); // never two discs in one square
     const d = document.createElement('div');
     d.className = `disc p${player}`;
     this.place(d, cx(col), cy(row));
@@ -364,6 +367,7 @@ export class BoardView {
   // Opens the bottom of the board: every disc falls out, column by column.
   async releaseAll() {
     this.clearWin();
+    this.clearNotes();
     const list = [...this.discs.entries()];
     this.discs.clear();
     if (!list.length) return;
@@ -383,9 +387,80 @@ export class BoardView {
     this.labelColumns();
   }
 
+  // ----- coaching notes drawn over the board
+
+  svg(tag, attrs, text) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  clearNotes() {
+    this.notes.replaceChildren();
+  }
+
+  // Outcome tags on the square each column would land on: [{ col, row, label, kind }],
+  // kind 'win' | 'draw' | 'loss' | 'unknown' | 'best'.
+  showTags(items) {
+    this.notes.querySelectorAll('.note-tag').forEach((n) => n.remove());
+    for (const it of items) {
+      const g = this.svg('g', { class: `note-tag ${it.kind}${it.best ? ' best' : ''}`, transform: `translate(${cx(it.col)} ${cy(it.row)})` });
+      g.append(this.svg('circle', { r: HOLE_R - 3 }));
+      g.append(this.svg('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', y: 1 }, it.label));
+      this.notes.append(g);
+    }
+  }
+
+  // Numbered ghost discs showing a line of play: [{ col, row, player, n }].
+  // Discs numbered up to `alreadyShown` were drawn before and don't fade in again.
+  showGhosts(items, finalLines = null, winner = 0, alreadyShown = 0) {
+    this.notes.querySelectorAll('.note-ghost, .note-line').forEach((n) => n.remove());
+    if (finalLines && winner) {
+      for (const line of finalLines) {
+        const [c0, r0] = line[0], [c1, r1] = line[line.length - 1];
+        this.notes.append(this.svg('line', {
+          class: `note-line p${winner}`, x1: cx(c0), y1: cy(r0), x2: cx(c1), y2: cy(r1),
+        }));
+      }
+    }
+    for (const it of items) {
+      const old = it.n <= alreadyShown;
+      const g = this.svg('g', { class: `note-ghost p${it.player}${old ? ' still' : ''}`, transform: `translate(${cx(it.col)} ${cy(it.row)})` });
+      if (!old) g.style.animationDelay = `${(it.n - alreadyShown) * 70}ms`;
+      g.append(this.svg('circle', { r: HOLE_R - 1 }));
+      g.append(this.svg('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', y: 1 }, String(it.n)));
+      this.notes.append(g);
+    }
+  }
+
+  // Rings around cells worth looking at: [[col,row], ...].
+  showMarks(cells, kind = 'note-mark') {
+    this.notes.querySelectorAll(`.${kind}`).forEach((n) => n.remove());
+    for (const [c, r] of cells) {
+      this.notes.append(this.svg('circle', { class: kind, cx: cx(c), cy: cy(r), r: HOLE_R + 5 }));
+    }
+  }
+
+  // How many lines of four pass through each empty cell (counts[c][r]).
+  showHeat(counts, cells) {
+    this.notes.querySelectorAll('.note-heat').forEach((n) => n.remove());
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        if (cells && cells[idx(c, r)]) continue;
+        const v = counts[c][r];
+        const g = this.svg('g', { class: 'note-heat', transform: `translate(${cx(c)} ${cy(r)})` });
+        g.style.setProperty('--h', String(v / 13));
+        g.append(this.svg('circle', { r: HOLE_R - 4 }));
+        g.append(this.svg('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', y: 1 }, String(v)));
+        this.notes.append(g);
+      }
+    }
+  }
+
   // ----- the result
 
-  showWin(lines, player) {
+  showWin(lines, player, quiet = false) {
     this.clearWin();
     const winning = new Set();
     for (const line of lines) for (const [c, r] of line) winning.add(idx(c, r));
@@ -407,7 +482,7 @@ export class BoardView {
       ring.setAttribute('class', `win-ring p${player}`);
       this.winGroup.append(ring);
     }
-    if (!this.reduced) this.sparks(lines, player);
+    if (!this.reduced && !quiet) this.sparks(lines, player);
   }
 
   clearWin() {

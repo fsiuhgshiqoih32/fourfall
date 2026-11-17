@@ -67,6 +67,27 @@
       </div>
 
       <div class="mode-group">
+        <button class="mode" id="m-train" type="button" aria-expanded="false" aria-controls="opt-train">
+          <span class="mode-name">Train with the solver</span>
+          <span class="mode-note">Play the perfect computer and get coached on every move.</span>
+        </button>
+        <div class="mode-opts" id="opt-train" hidden>
+          <fieldset class="seg">
+            <legend class="sr">Who starts</legend>
+            <input type="radio" name="starter" id="st-you" value="you"><label for="st-you">You start</label>
+            <input type="radio" name="starter" id="st-solver" value="solver"><label for="st-solver">Solver starts</label>
+          </fieldset>
+          <p class="fine" id="starter-note"></p>
+          <button class="btn primary" id="start-train" type="button">Start training</button>
+          <div class="learn-links">
+            <button class="btn" id="open-lessons" type="button">Lessons</button>
+            <button class="btn" id="open-puzzles" type="button">Puzzles</button>
+          </div>
+          <p class="fine" id="progress-line"></p>
+        </div>
+      </div>
+
+      <div class="mode-group">
         <button class="mode" id="m-online" type="button" aria-expanded="false" aria-controls="opt-online">
           <span class="mode-name">Play online</span>
           <span class="mode-note">Send a friend a link or a room code.</span>
@@ -128,6 +149,60 @@
         <span class="pscore"></span>
       </div>
       <p class="draws" id="draws"></p>
+    </section>
+
+    <section class="coach" id="coach" aria-label="Coach">
+      <div class="verdict" id="verdict">
+        <span class="verdict-label">With perfect play from here</span>
+        <span class="verdict-text" id="verdict-text"></span>
+      </div>
+      <div class="feedback" id="feedback" role="status">
+        <p class="grade" id="fb-grade"></p>
+        <p class="fb-text" id="fb-text"></p>
+        <p class="fb-detail" id="fb-detail"></p>
+      </div>
+      <div class="coach-tools">
+        <button class="btn small" id="btn-hint" type="button">Hint</button>
+        <button class="btn small" id="btn-values" type="button" aria-pressed="false">Show values</button>
+        <button class="btn small" id="btn-line" type="button" aria-pressed="false">Show the line</button>
+        <button class="btn small" id="btn-takeback" type="button">Take back</button>
+      </div>
+      <p class="coach-note" id="coach-note" role="status"></p>
+      <p class="legend" id="values-legend">W5: you win in 5 moves. D: draw. L9: the solver wins in 9.</p>
+      <div class="review" id="review">
+        <p class="review-head" id="review-head"></p>
+        <ol class="review-list" id="review-list"></ol>
+        <button class="link" id="review-exit" type="button" hidden>Back to the final position</button>
+      </div>
+    </section>
+
+    <section class="learn" id="learn" aria-labelledby="learn-title">
+      <h2 class="panel-title" id="learn-title" tabindex="-1">Lessons</h2>
+      <ol class="lesson-list" id="lesson-list"></ol>
+      <h2 class="panel-title">Puzzles</h2>
+      <p class="fine" id="puzzle-progress"></p>
+      <div class="control-row">
+        <button class="btn primary" id="start-puzzles" type="button">Start puzzles</button>
+        <button class="btn ghost" id="learn-back" type="button">Back</button>
+      </div>
+    </section>
+
+    <section class="task" id="task" aria-labelledby="task-title">
+      <p class="task-count" id="task-count"></p>
+      <h2 class="task-title" id="task-title" tabindex="-1"></h2>
+      <div class="task-intro" id="task-intro"></div>
+      <p class="task-prompt" id="task-prompt"></p>
+      <div class="task-feedback" id="task-feedback" role="status">
+        <p class="grade" id="task-grade"></p>
+        <p class="fb-text" id="task-text"></p>
+      </div>
+      <div class="control-row">
+        <button class="btn primary" id="task-next" type="button">Next</button>
+        <button class="btn" id="task-retry" type="button">Try again</button>
+        <button class="btn" id="task-show" type="button">Show answer</button>
+        <button class="btn" id="task-play" type="button">Play it out</button>
+        <button class="btn ghost" id="task-back" type="button">Back</button>
+      </div>
     </section>
 
     <div class="controls" id="controls">
