@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fourfall</title>
+<meta name="description" content="Four in a row in your browser. Play on one device, against the computer, or online with a friend.">
+<meta name="theme-color" content="#0b241d">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fourfall">
+<meta property="og:description" content="Four in a row in your browser. Play on one device, against the computer, or online with a friend.">
+<meta property="og:url" content="https://fsiuhgshiqoih32.github.io/fourfall/">
+<meta property="og:image" content="https://fsiuhgshiqoih32.github.io/fourfall/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="fonts/gloock-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/figtree-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<div class="glow g1" aria-hidden="true"></div>
+<div class="glow g2" aria-hidden="true"></div>
+
+<div class="app" data-screen="home">
+  <header class="top">
+    <button class="mark" id="mark" type="button">Fourfall</button>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-sound" type="button" aria-pressed="true" aria-label="Sound" title="Sound">
+        <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-help" type="button" aria-label="How to play" title="How to play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.6 9.7a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2.9-1.2 1.8v.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <h1 class="brand">Fourfall</h1>
+
+    <div class="modes" id="modes">
+      <button class="mode" id="m-local" type="button">
+        <span class="mode-name">Pass and play</span>
+        <span class="mode-note">Two players take turns on this device.</span>
+      </button>
+
+      <div class="mode-group">
+        <button class="mode" id="m-ai" type="button" aria-expanded="false" aria-controls="opt-ai">
+          <span class="mode-name">Play the computer</span>
+          <span class="mode-note">Easy, normal or hard.</span>
+        </button>
+        <div class="mode-opts" id="opt-ai" hidden>
+          <fieldset class="seg">
+            <legend class="sr">Difficulty</legend>
+            <input type="radio" name="level" id="lv-easy" value="easy"><label for="lv-easy">Easy</label>
+            <input type="radio" name="level" id="lv-normal" value="normal"><label for="lv-normal">Normal</label>
+            <input type="radio" name="level" id="lv-hard" value="hard"><label for="lv-hard">Hard</label>
+          </fieldset>
+          <button class="btn primary" id="start-ai" type="button">Start game</button>
+        </div>
+      </div>
+
+      <div class="mode-group">
+        <button class="mode" id="m-online" type="button" aria-expanded="false" aria-controls="opt-online">
+          <span class="mode-name">Play online</span>
+          <span class="mode-note">Send a friend a link or a room code.</span>
+        </button>
+        <div class="mode-opts" id="opt-online" hidden>
+          <label class="field">
+            <span>Your name</span>
+            <input id="in-name" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Optional">
+          </label>
+          <button class="btn primary" id="create-room" type="button">Create a room</button>
+          <form class="join" id="join-form" novalidate>
+            <label class="field">
+              <span>Room code</span>
+              <input id="in-code" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC 234">
+            </label>
+            <button class="btn" type="submit">Join</button>
+          </form>
+          <p class="error" id="join-error" role="alert"></p>
+          <p class="fine">Moves and names pass through public relay servers.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="lobby" id="lobby" aria-labelledby="lobby-title">
+      <h2 class="lobby-title" id="lobby-title">Your room</h2>
+      <p class="code" id="lobby-code"></p>
+      <div class="lobby-actions" id="lobby-actions">
+        <button class="btn primary" id="copy-link" type="button">Copy invite link</button>
+        <button class="btn" id="share-link" type="button" hidden>Share</button>
+      </div>
+      <p class="lobby-status" id="lobby-status" role="status"></p>
+      <button class="btn ghost" id="lobby-cancel" type="button">Cancel</button>
+    </section>
+
+    <section class="lobby invite" id="invite" aria-labelledby="invite-title">
+      <h2 class="lobby-title" id="invite-title">Join room</h2>
+      <p class="code" id="invite-code"></p>
+      <label class="field invite-name">
+        <span>Your name</span>
+        <input id="in-name-invite" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="Optional">
+      </label>
+      <div class="lobby-actions">
+        <button class="btn primary" id="invite-join" type="button">Join game</button>
+        <button class="btn ghost" id="invite-cancel" type="button">Not now</button>
+      </div>
+    </section>
+
+    <section class="hud" id="hud" aria-label="Players">
+      <div class="plate" id="plate-1">
+        <span class="chip p1" aria-hidden="true"></span>
+        <span class="pname"></span>
+        <span class="ptag"></span>
+        <span class="pscore"></span>
+      </div>
+      <div class="plate" id="plate-2">
+        <span class="chip p2" aria-hidden="true"></span>
+        <span class="pname"></span>
+        <span class="ptag"></span>
+        <span class="pscore"></span>
+      </div>
+      <p class="draws" id="draws"></p>
+    </section>
+
+    <div class="controls" id="controls">
+      <div class="control-row">
+        <button class="btn primary" id="btn-new" type="button">New game</button>
+        <button class="btn" id="btn-undo" type="button">Undo</button>
+        <button class="btn ghost" id="btn-menu" type="button">Menu</button>
+      </div>
+      <p class="note" id="note"></p>
+      <p class="room-line" id="room-line">
+        <span>Room <span id="room-code"></span></span>
+        <button class="link" id="room-copy" type="button">Copy invite link</button>
+      </p>
+    </div>
+
+    <div class="table">
+      <div class="rig" id="rig"></div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </main>
+</div>
+
+<dialog class="dlg" id="dlg-help" aria-labelledby="help-title">
+  <h2 id="help-title">How to play</h2>
+  <p>Take turns dropping a disc into one of the seven columns. It falls to the lowest open space.</p>
+  <p>Get four of your discs in a line, across, up and down or diagonally, to win. If the board fills up first, the game is a draw.</p>
+  <h3>Keys</h3>
+  <dl class="keys">
+    <dt>Left and Right</dt><dd>Choose a column</dd>
+    <dt>Enter or Space</dt><dd>Drop a disc</dd>
+    <dt>1 to 7</dt><dd>Drop straight into that column</dd>
+    <dt>U</dt><dd>Undo, when playing on one device</dd>
+  </dl>
+  <form method="dialog" class="dlg-actions"><button class="btn primary" value="close">Close</button></form>
+</dialog>
+
+<dialog class="dlg" id="dlg-leave" aria-labelledby="leave-title">
+  <h2 id="leave-title">Leave this game?</h2>
+  <p id="leave-text">The board and the scores will be cleared.</p>
+  <form method="dialog" class="dlg-actions">
+    <button class="btn" value="stay">Keep playing</button>
+    <button class="btn primary" value="leave">Leave</button>
+  </form>
+</dialog>
+</body>
+</html>
