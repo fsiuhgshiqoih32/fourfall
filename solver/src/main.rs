@@ -3,7 +3,7 @@
 //!   c4 analyze <moves>             scores of every column (moves: digits 0-6, "-" for empty)
 //!   c4 bench <depth> <count> [seed] [weak]
 //!   c4 testset <file>              Pons-format test file: "<moves 1-7> <score>" per line
-//!   c4 tree <limit_bot_first> <limit_you_first> <out> [threads]
+//!   c4 tree <limit_bot_first> <limit_you_first> <out> [threads] [seed.bin]
 //!       the perfect bot's replies for every position it can face up to the limits
 
 use fourfall_solver::*;
@@ -101,7 +101,8 @@ fn main() {
             let limit_b: u32 = args[3].parse().unwrap();
             let out = &args[4];
             let threads: usize = args.get(5).and_then(|s| s.parse().ok()).unwrap_or(4);
-            tree::generate(limit_a, limit_b, out, threads);
+            let seed = args.get(6).map(|s| s.as_str());
+            tree::generate(limit_a, limit_b, out, threads, seed);
         }
         _ => eprintln!("usage: c4 analyze <moves> | bench <depth> <count> [seed] [weak] | testset <file> | tree <limitA> <limitB> <out> [threads]"),
     }
@@ -156,7 +157,19 @@ mod tree {
         (best, bv)
     }
 
-    pub fn generate(limit_a: u32, limit_b: u32, out_path: &str, threads: usize) {
+    /// Reads a tree file back into the table, so a deeper run only solves new positions.
+    fn load(path: &str, table: &mut HashMap<u64, (u8, i8)>) {
+        let b = std::fs::read(path).expect("seed file");
+        assert_eq!(&b[0..4], b"FFT1", "not a tree file");
+        let n = u32::from_le_bytes(b[4..8].try_into().unwrap()) as usize;
+        for i in 0..n {
+            let o = 8 + i * 8;
+            let key = f64::from_le_bytes(b[o..o + 8].try_into().unwrap()) as u64;
+            table.insert(key, (b[8 + n * 8 + i], b[8 + n * 9 + i] as i8));
+        }
+    }
+
+    pub fn generate(limit_a: u32, limit_b: u32, out_path: &str, threads: usize, seed: Option<&str>) {
         let t0 = Instant::now();
         // Bot moves first: it opens in the centre (the only winning first move).
         let mut after_centre = Position::new();
@@ -166,6 +179,10 @@ mod tree {
         frontier.extend(human_children(&Position::new()).into_iter().map(|p| (p, limit_b)));
 
         let mut table: HashMap<u64, (u8, i8)> = HashMap::new();
+        if let Some(path) = seed {
+            load(path, &mut table);
+            eprintln!("seeded with {} positions from {path}", table.len());
+        }
         let mut seen: HashSet<u64> = HashSet::new();
         while !frontier.is_empty() {
             // One level at a time: dedupe, solve in parallel, then expand.
@@ -176,8 +193,17 @@ mod tree {
             }
             if level.is_empty() { break; }
             let depth_info: Vec<u32> = { let mut d: Vec<u32> = level.iter().map(|x| x.0.nb_moves()).collect(); d.sort(); d.dedup(); d };
-            let n = level.len();
             let tl = Instant::now();
+            // Positions the seed already knows are not solved again.
+            let (known, level): (Vec<_>, Vec<_>) = level.into_iter().partition(|(p, _)| table.contains_key(&canonical(p).0));
+            let mut reused = Vec::with_capacity(known.len());
+            for (p, lim) in known {
+                let (k, mirrored) = canonical(&p);
+                let (stored, v) = table[&k];
+                let mv = if mirrored { WIDTH - 1 - stored as usize } else { stored as usize };
+                reused.push((p, lim, mv, v as i32));
+            }
+            let n = level.len();
             let queue = Arc::new(Mutex::new(level.clone()));
             let results = Arc::new(Mutex::new(Vec::with_capacity(n)));
             let mut handles = Vec::new();
@@ -198,7 +224,9 @@ mod tree {
                 }));
             }
             for h in handles { h.join().unwrap(); }
-            let results = Arc::try_unwrap(results).unwrap().into_inner().unwrap();
+            let mut results = Arc::try_unwrap(results).unwrap().into_inner().unwrap();
+            let n_reused = reused.len();
+            results.extend(reused);
             for (p, lim, mv, v) in results {
                 let (k, mirrored) = canonical(&p);
                 let stored = if mirrored { WIDTH - 1 - mv } else { mv };
@@ -209,7 +237,7 @@ mod tree {
                 if q.nb_moves() as i32 >= CELLS { continue; }
                 for child in human_children(&q) { frontier.push((child, lim)); }
             }
-            eprintln!("depths {:?}: {} positions in {:.0} s (total {:.0} s)", depth_info, n, tl.elapsed().as_secs_f64(), t0.elapsed().as_secs_f64());
+            eprintln!("depths {:?}: {} solved, {} from the seed, {:.0} s (total {:.0} s)", depth_info, n, n_reused, tl.elapsed().as_secs_f64(), t0.elapsed().as_secs_f64());
             write(&table, out_path);
         }
         eprintln!("done: {} positions, {:.0} s", table.len(), t0.elapsed().as_secs_f64());

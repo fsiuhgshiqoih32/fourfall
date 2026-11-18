@@ -223,9 +223,12 @@ function refresh() {
   renderLearn();
 }
 
+const switching = () => S.screen === 'game' && shown.key !== target().key;
+
 function renderPlates(st) {
   const n = names();
   const o = S.online;
+  const moving = switching();
   for (const p of [1, 2]) {
     const plate = $(`#plate-${p}`);
     const away = S.mode === 'online' && o && p !== o.myColor && !o.peer.present;
@@ -235,10 +238,11 @@ function renderPlates(st) {
     else if (S.mode === 'ai' && p === 2) tag = LEVEL_NAMES[S.level];
     else if (S.mode === 'train' && p !== S.train.human) tag = 'Perfect play';
     if (away) tag = o.peer.left ? 'Left the room' : 'Offline';
+    if (moving) tag = S.mode === 'train' && p !== S.train.human ? 'Perfect play' : '';
     plate.querySelector('.pname').textContent = n[p];
     plate.querySelector('.ptag').textContent = tag;
     plate.querySelector('.pscore').textContent = String(S.scores[p]);
-    plate.classList.toggle('active', st.over ? st.winner === p : st.turn === p);
+    plate.classList.toggle('active', !moving && (st.over ? st.winner === p : st.turn === p));
     plate.classList.toggle('away', away);
   }
   const d = S.scores.draw;
@@ -249,7 +253,7 @@ function renderStatus(st) {
   const el = $('#status');
   let text = '';
   let result = false;
-  if (S.screen === 'game') {
+  if (S.screen === 'game' && !switching()) {
     const n = names();
     const o = S.online;
     const peer = o?.peer.name || 'Your friend';
@@ -419,7 +423,7 @@ async function maybeComputer() {
   refresh();
   const t0 = performance.now();
   let col;
-  if (S.mode === 'train') col = await solverReply(S.moves);
+  if (S.mode === 'train') col = await solverReply(S.moves, req);
   else col = await askComputer(S.moves.slice(), S.first, S.level);
   if (req !== S.aiReq) return;
   if (!(col >= 0) || !canPlay(st, col)) col = fallbackMove(st);
@@ -672,6 +676,7 @@ function outcomeOf(score, n) {
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function verdictText(kind, moves) {
+  if (moves === 0) return kind === 'win' ? 'You win' : kind === 'loss' ? 'The solver wins' : 'A draw';
   if (kind === 'win') return moves ? `You can win in ${plural(moves, 'move')}` : 'You can force a win';
   if (kind === 'loss') return moves ? `The solver wins in ${plural(moves, 'move')}` : 'The solver can force a win';
   return 'A draw';
@@ -772,6 +777,7 @@ async function trainTurn() {
     const b = bestScore(scores);
     if (finite(b)) T.verdict = verdictFor(b, S.moves.length);
   }
+  if (T.note === 'Working out the values') T.note = '';
   renderCoach();
 }
 
@@ -798,12 +804,18 @@ async function trainMove(c) {
 }
 
 // The solver's reply in training: from the prefetch when it matches.
-async function solverReply(moves) {
+async function solverReply(moves, req) {
   const key = movesKey(moves);
+  const stale = () => req !== S.aiReq;
+  const pf = T.prefetch;
   let r = null;
-  if (T.prefetch && T.prefetch.key === key) r = await T.prefetch.promise;
+  if (pf && pf.key === key) r = await pf.promise;
+  // Taken back, new game or left: the question no longer matters, so it is
+  // not asked again (that would block the fresh worker).
+  if (stale()) return -1;
   if (!r) { try { r = await solverAsk('botMove', moves.slice()); } catch { r = null; } }
-  T.prefetch = null;
+  if (stale()) return -1;
+  if (T.prefetch === pf) T.prefetch = null;
   if (r && r.col >= 0) return r.col;
   // The solver could not answer: the strongest of the other computer players stands in.
   return askComputer(moves.slice(), S.first, 'hard');
@@ -874,8 +886,10 @@ async function giveHint() {
   if (!learnerTurn(st) || T.hintBusy || T.hintLevel >= 2) return;
   T.hintBusy = true;
   const moves = S.moves.slice();
+  if (!T.analyses.has(movesKey(moves))) { T.note = 'Working it out'; renderCoach(); }
   const scores = await ensureAnalysis(moves);
   T.hintBusy = false;
+  if (T.note === 'Working it out') T.note = '';
   if (!scores || movesKey(S.moves) !== movesKey(moves) || !learnerTurn()) return;
   T.hintLevel += 1;
   let h;
@@ -1044,8 +1058,10 @@ function renderCoach() {
 
   let v = T.verdict;
   if (reviewing && entry.scores && finite(bestScore(entry.scores))) v = verdictFor(bestScore(entry.scores), entry.at);
-  $('#verdict').hidden = over && !reviewing;
+  if (over && !reviewing) v = makeVerdict(st.winner === T.human ? 'win' : st.winner ? 'loss' : 'draw', 0);
+  const ended = Boolean(v && v.moves === 0);
   $('#verdict').className = `verdict ${v ? v.kind : 'pending'}`;
+  $('#verdict-label').textContent = ended ? 'Game over' : 'With perfect play from here';
   $('#verdict-text').textContent = v ? v.text : 'Working it out';
 
   const fb = $('#feedback');
@@ -1064,7 +1080,13 @@ function renderCoach() {
     }
   }
 
-  $('#coach-note').textContent = T.note;
+  const noteEl = $('#coach-note');
+  if (noteEl.textContent !== T.note) {
+    noteEl.textContent = T.note;
+    if (T.note && narrow.matches) {
+      requestAnimationFrame(() => noteEl.scrollIntoView({ block: 'nearest', behavior: view.reduced ? 'auto' : 'smooth' }));
+    }
+  }
   const turn = learnerTurn(st);
   setAvailable($('#btn-hint'), turn && T.hintLevel < 2 && !T.hintBusy);
   $('#btn-values').setAttribute('aria-pressed', String(T.showValues || reviewing));
@@ -1250,6 +1272,9 @@ async function startTask(kind, i, j = 0) {
   setScreen('task');
   $('#task-title').focus({ preventScroll: true });
   reconcile();
+  // Lessons have no stored scores: work them out while the learner reads, so
+  // the explanation of an answer is ready at once.
+  if (!t.scores) ensureAnalysis(t.moves);
 }
 
 // Heat numbers on empty squares, the lesson's marked squares, and the answer
@@ -1540,6 +1565,9 @@ $('#btn-values').addEventListener('click', () => {
   if ($('#btn-values').getAttribute('aria-disabled') === 'true') return;
   S.train.showValues = !S.train.showValues;
   store.set('values', S.train.showValues);
+  const pending = S.mode === 'train' && !S.train.analyses.has(S.moves.join(''));
+  if (S.train.showValues && pending) S.train.note = 'Working out the values';
+  else if (S.train.note === 'Working out the values') S.train.note = '';
   renderCoach();
 });
 $('#btn-line').addEventListener('click', () => toggleLine());
